@@ -1,0 +1,9 @@
+.sw[a-p]
+.*.sw[a-p]
+Session.vim
+.netrwhist
+*~
+tags
+build/
+config.h*
+.makeEspArduino
