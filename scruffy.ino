@@ -83,37 +83,37 @@ void processSlackMessage(char *payload) {
         return;
     }
 
-    if (root["type"] == F("message")) {
-        JsonObject &resp = jsonRespBuffer.createObject();
-        resp["type"] = "message";
-        resp["id"] = nextCmdId++;
-        resp["channel"] = root["channel"];
-        respond = true;
-        if (root["channel"] == F(SLACK_API_CHANNEL)) {
-            String message = root["text"];
-            message.toLowerCase();
-            if (message.indexOf("open") > -1) {
-                openDoors();
-                resp["text"] = "Scruffy's work here is done.";
-            } else {
-                respond = false;
-            }
-        } else {
-            if (root.containsKey("subtype") && root["subtype"] == F("bot_message")) {
-                respond = false;
-            } else {
-                rand = random(NOPE_RESPONSES);
-                USE_SERIAL.printf("rand = %i\n", rand);
-                USE_SERIAL.println(nope_responses[rand]);
-                resp["text"] = nope_responses[rand];
-            }
-        }
+    if (root["type"] != "message") {
+        return;
+    }
 
-        if (respond) {
-            resp.printTo(json);
-            USE_SERIAL.printf("[WebSocker] Sending response: %s\n", json.c_str());
-            webSocket.sendTXT(json);
+    JsonObject &resp = jsonRespBuffer.createObject();
+    resp["type"] = "message";
+    resp["id"] = nextCmdId++;
+    resp["channel"] = root["channel"];
+    respond = true;
+    if (root["channel"] == SLACK_API_CHANNEL) {
+        String message = root["text"];
+        message.toLowerCase();
+        if (message.indexOf("open") > -1) {
+            openDoors();
+            resp["text"] = "Scruffy's work here is done.";
+        } else {
+            respond = false;
         }
+    } else {
+        if (root.containsKey("subtype") && root["subtype"] == F("bot_message")) {
+            respond = false;
+        } else {
+            rand = random(NOPE_RESPONSES);
+            resp["text"] = nope_responses[rand];
+        }
+    }
+
+    if (respond) {
+        resp.printTo(json);
+        USE_SERIAL.printf("[WebSocker] Sending response: %s\n", json.c_str());
+        webSocket.sendTXT(json);
     }
 }
 
