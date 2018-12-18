@@ -11,6 +11,9 @@
 
 #define USE_SERIAL Serial
 
+#define REED_SWITCH_PIN 27
+#define REED_SWITCH_WAIT_TIME 300000
+
 #define RELAY_PIN 12
 #define RELAY_WAIT 1000
 
@@ -47,6 +50,9 @@ String nope_responses[NOPE_RESPONSES] = {"https://i.imgur.com/JdiC5zK.gif", "htt
 long nextCmdId = 1;
 bool connected = false;
 unsigned long lastPing = 0;
+int doorState;
+int previousDoorState;
+unsigned long doorOpenDuration = 0;
 
 void openDoors() {
     USE_SERIAL.printf("Opening doors...");
@@ -63,6 +69,19 @@ void sendPing() {
     root["id"] = nextCmdId++;
     String json;
     root.printTo(json);
+    webSocket.sendTXT(json);
+}
+
+void sendOpenDoorMessage() {
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+    root["type"] = "message";
+    root["id"] = nextCmdId++;
+    root["channel"] = SLACK_API_CHANNEL;
+    root["text"] = "<!channel> the door is open for more than 5min!";
+    String json;
+    root.printTo(json);
+    USE_SERIAL.printf("[WebSocker] Sending response: %s\n", json.c_str());
     webSocket.sendTXT(json);
 }
 
@@ -166,6 +185,8 @@ void setup() {
 
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, LOW);
+    pinMode(REED_SWITCH_PIN, INPUT);
+    digitalWrite(REED_SWITCH_PIN, LOW);
 
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) {
@@ -178,6 +199,20 @@ void setup() {
 
 void loop() {
     webSocket.loop();
+
+    doorState = digitalRead(REED_SWITCH_PIN);
+    if (doorState != previousDoorState) {
+        if (doorState != HIGH) {
+            doorOpenDuration = millis();
+        }
+        delay(50);
+    }
+    previousDoorState = doorState;
+
+    if (doorState != HIGH && millis() - doorOpenDuration > REED_SWITCH_WAIT_TIME) {
+        sendOpenDoorMessage();
+        doorOpenDuration = millis();
+    }
 
     if (connected) {
         // Send ping every 5 seconds, to keep the connection alive
