@@ -7,7 +7,6 @@
 #include <HTTPClient.h>
 #include <WebSocketsClient.h>
 #include <WiFi.h>
-#include <WiFiMulti.h>
 #include "config.h"
 
 #define USE_SERIAL Serial
@@ -41,7 +40,6 @@
 #define SLACK_API_SSL_CERT_FINGERPRINT "C1 0D 53 49 D2 3E E5 2B A2 61 D5 9E 6F 99 0D 3D FD 8B B2 B3"
 #define NOPE_RESPONSES 4
 
-WiFiMulti WiFiMulti;
 WebSocketsClient webSocket;
 String nope_responses[NOPE_RESPONSES] = {"https://i.imgur.com/JdiC5zK.gif", "https://i.gifer.com/7GTC.gif",
                                          "https://i.imgur.com/Wt4gkK0.gif", "https://media.giphy.com/media/PAO4KoQ532CRi/giphy.gif"};
@@ -169,9 +167,10 @@ void setup() {
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, LOW);
 
-    WiFiMulti.addAP(WIFI_SSID, WIFI_PASS);
-    while (WiFiMulti.run() != WL_CONNECTED) {
-        delay(100);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        USE_SERIAL.println("Connecting to WiFi...");
     }
 
     configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
@@ -192,5 +191,11 @@ void loop() {
         if (!connected) {
             delay(500);
         }
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+        USE_SERIAL.println("Reconnecting to WiFi...");
+        WiFi.disconnect();
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
     }
 }
